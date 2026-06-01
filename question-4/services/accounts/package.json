@@ -1,0 +1,13 @@
+{
+  "name": "accounts-service",
+  "version": "1.0.0",
+  "description": "Micro-service de gestion des comptes bancaires",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  }
+}

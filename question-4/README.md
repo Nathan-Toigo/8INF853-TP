@@ -12,6 +12,6 @@ c. Donnez les avantages et les inconvénients de cette méthode ou architecture.
 
 ## Livrables
 - Copie électronique.
-- Description de rôle et étapes de cette méthode (30%)
-- Application complète et exécutable (40%)
-- Avantages et inconvénients (30%)
+- Description de rôle et étapes de cette méthode (30%) → [RAPPORT.md](./RAPPORT.md) sections a et c
+- Application complète et exécutable (40%) → [README-EXECUTION.md](./README-EXECUTION.md)
+- Avantages et inconvénients (30%) → [RAPPORT.md](./RAPPORT.md) section c
