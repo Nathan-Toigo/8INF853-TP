@@ -13,7 +13,32 @@
 cd 8INF853-TP1-Q6-1
 ```
 
-### 2. Construire l'image Docker
+---
+
+### ▶️ Méthode recommandée — Docker Compose
+
+#### Construire l'image
+```bash
+docker compose build
+```
+
+#### Exécuter la simulation
+```bash
+docker compose run --rm app
+```
+
+#### Build + exécution en une seule commande
+```bash
+docker compose up
+```
+
+> ⏱️ Le premier build prend ~2 minutes (téléchargement des dépendances Maven). Les builds suivants utilisent le cache Docker et sont quasi-instantanés.
+
+---
+
+### 🔧 Méthode alternative — Docker seul
+
+#### Construire l'image
 ```bash
 docker build -t tp-aspectj .
 ```
@@ -23,12 +48,12 @@ Cette commande :
 - Produit un fat JAR avec toutes les dépendances
 - Crée une image légère `eclipse-temurin:17-jre-alpine` (stage runtime)
 
-> ⏱️ Le premier build prend ~2 minutes (téléchargement des dépendances Maven). Les builds suivants utilisent le cache Docker et sont quasi-instantanés.
-
-### 3. Exécuter la simulation
+#### Exécuter la simulation
 ```bash
 docker run --rm tp-aspectj
 ```
+
+---
 
 **Sortie attendue :**
 ```
@@ -49,17 +74,19 @@ docker run --rm tp-aspectj
 ╚══════════════════════════════════════════════════╝
 ```
 
-### 4. Commandes utiles
+### Commandes utiles
 ```bash
 # Voir l'image créée
-docker images | grep tp-aspectj
+docker images | grep tp-aspectj-pubsub
 
 # Voir les conteneurs ayant tourné
 docker ps -a
 
-# Supprimer l'image et reconstruire from scratch
-docker rmi tp-aspectj
-docker build --no-cache -t tp-aspectj .
+# Reconstruire from scratch (sans cache)
+docker compose build --no-cache
+
+# Supprimer les ressources Compose (conteneurs + image)
+docker compose down --rmi local
 ```
 
 ---
