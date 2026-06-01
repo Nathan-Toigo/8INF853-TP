@@ -1,0 +1,24 @@
+# Fichiers à ignorer dans le contexte de build Docker
+# Réduit la taille du contexte envoyé au daemon Docker
+
+# Répertoire de build Maven (contient les classes compilées et JARs)
+target/
+
+# Fichiers Git
+.git
+.gitignore
+
+# Fichiers de l'IDE
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+.settings/
+
+# Fichiers de logs
+*.log
+
+# Fichiers temporaires
+*.tmp
+*.swp
