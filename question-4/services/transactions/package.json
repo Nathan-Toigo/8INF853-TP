@@ -1,0 +1,14 @@
+{
+  "name": "transactions-service",
+  "version": "1.0.0",
+  "description": "Micro-service de gestion des transactions bancaires",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "axios": "^1.7.0"
+  }
+}

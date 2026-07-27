@@ -1,0 +1,25 @@
+# =============================================================================
+# docker-compose.yaml – TP AspectJ Publisher-Subscriber
+#
+# Encapsule le Dockerfile multi-stage existant.
+# Usage :
+#   docker compose build        ← construit l'image
+#   docker compose run --rm app ← exécute la simulation
+#   docker compose up           ← build + run (affiche les logs)
+# =============================================================================
+
+services:
+  app:
+    # Nom de l'image locale produite
+    image: tp-aspectj-pubsub:1.0
+
+    # Construction à partir du Dockerfile présent dans ce répertoire
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Cible le stage "runtime" (défaut du Dockerfile, mais explicite ici)
+      target: runtime
+
+    # Le conteneur se termine après l'exécution de la simulation ;
+    # restart: "no" évite qu'il redémarre en boucle.
+    restart: "no"
