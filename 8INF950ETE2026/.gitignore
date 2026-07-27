@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+coverage.xml
+.coverage
+.env
+.sonar/
+.scannerwork/
+*.egg-info/
+*.db
+*.sqlite3
