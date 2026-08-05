@@ -1,0 +1,454 @@
+\documentclass[12pt, a4paper]{article}
+
+% --- Paquetages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{hmargin=2.5cm,vmargin=2.5cm}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{url}
+\usepackage{microtype}
+
+% --- Chemins/URLs en police à chasse fixe, avec retour à la ligne sur "/" et "_" ---
+\urlstyle{tt}
+\newcommand{\code}[1]{\path{#1}}
+
+% --- Évite les débordements de justification (Overfull \hbox) en autorisant
+%     un léger étirement supplémentaire des espaces en dernier recours ---
+\setlength{\emergencystretch}{3em}
+
+% --- Paramétrage du code source ---
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    backgroundcolor=\color{gray!10},
+    frame=single,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{red}
+}
+
+% --- Macro pour emplacement de figure ---
+\newcommand{\figureplaceholder}[2]{%
+    \fbox{\parbox{0.92\textwidth}{\centering\vspace{3.5cm}%
+    \textit{#1}\\[0.5cm]\small #2\vspace{3.5cm}}}%
+}
+
+\begin{document}
+
+% --- Page de Garde ---
+\begin{titlepage}
+	\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+	\center
+
+	\textsc{\LARGE Université du Québec à Chicoutimi}\\[1.5cm]
+	\textsc{\Large Département d'informatique et de mathématique (DIM)}\\[0.5cm]
+
+	\HRule\\[0.4cm]
+	{\huge\bfseries 8INF950 --- Sujets spéciaux\\[0.2cm]
+	Vibe Coding \& Qualité logicielle en santé\\[0.3cm]
+	\large Compte rendu final}\\[0.4cm]
+	\HRule\\[1.5cm]
+
+	\begin{center}
+		\large
+		\textit{Étudiant}\\
+		TOÏGO Nathan
+	\end{center}
+
+	\vspace{1.5cm}
+	{\large\textit{Remis à}}\\
+	Hamid \textsc{Mcheick}\\
+	Professeur
+
+	\vfill
+	{\large\today}
+	\vfill
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\vspace{1cm}
+\listoffigures
+\newpage
+
+% --- Corps du compte rendu ---
+
+\section*{Résumé}
+\addcontentsline{toc}{section}{Résumé}
+
+Ce projet compare l'impact du \emph{vibe coding} sur la qualité logicielle en santé.
+Quatre modèles Azure AI Foundry (\texttt{gpt-5.4-nano}, \texttt{gpt-5.3-codex},
+\texttt{gpt-5.6-sol}, \texttt{gpt-5.6-terra}) ont généré, à partir du même prompt,
+une API FastAPI de gestion de rendez-vous médicaux, sans révision humaine. Chaque sortie
+a été enregistrée dans un \code{GENERATED_DRAFT.md}, puis matérialisée en fichiers
+exécutables via \code{extract_code_blocks.py}. Les quatre implémentations ont été
+analysées par SonarQube (\code{http://localhost:9000}). Les résultats montrent des
+écarts marqués~: \texttt{gpt-5.6-terra} obtient le meilleur profil (4~violations,
+dette 20~min), tandis que \texttt{gpt-5.4-nano} est le seul à présenter
+5~vulnérabilités (note sécurité~C). Une \textbf{analyse étendue} complémentaire (lint,
+couverture de tests $\geq 80\,\%$, audit de dépendances) a ensuite été appliquée aux
+\emph{mêmes} quatre projets~: aucun ne satisfait ce quality gate plus strict, principalement
+en raison d'une couverture de tests quasi nulle et de dépendances vulnérables non détectées
+par l'analyse SonarQube seule.
+
+\section{Introduction}
+
+\subsection{Contexte}
+
+Les modèles générateurs de code transforment les pratiques de développement. Le
+\emph{vibe coding} consiste à formuler des intentions en langage naturel et à accepter
+largement les suggestions produites, sans revue systématique. En santé, cela pose des
+enjeux de confidentialité (Loi~25), de fiabilité des règles métier et de traçabilité.
+
+Le cours 8INF950 (Été 2026, UQAC) évalue ces pratiques via la norme \textbf{ISO/IEC~25010}
+et des outils de mesure objectifs, principalement \textbf{SonarQube}.
+
+\subsection{Problématique}
+
+\emph{Quel modèle générateur de code produit la meilleure qualité logicielle en vibe
+coding pur, à spécification identique, et cette qualité résiste-t-elle à une
+\textbf{analyse étendue} (lint, couverture de tests, audit de dépendances) allant au-delà
+du scan \textbf{SonarQube}~?}
+
+\subsection{Portée}
+Ce projet contient : une spécification commune des attentes fonctionnelles
+(\code{docs/cahier-des-charges.md}), quatre projets générés par LLM externe (Azure AI
+Foundry) à partir de cette spécification, ainsi que deux analyses complémentaires appliquées
+à ces mêmes projets~: une \textbf{analyse SonarQube} (statique) et une \textbf{analyse
+étendue} (lint, tests, audit de dépendances). Il n'est pas inclus d'interface graphique (UI)
+pour naviguer et utiliser les solutions produites, la qualité du code ne pouvant être
+analysée uniquement sur la base du code et non pas de la pertinence ou des choix esthétiques
+des interfaces.
+
+\subsection{Choix des modèles génératifs}
+
+Les quatre modèles comparés (\texttt{gpt-5.4-nano}, \texttt{gpt-5.3-codex},
+\texttt{gpt-5.6-sol}, \texttt{gpt-5.6-terra}) appartiennent tous à la famille
+\textbf{OpenAI}, déployés via \textbf{Azure AI Foundry}. Ce choix n'est pas un parti pris
+méthodologique visant à écarter d'autres fournisseurs, mais une \textbf{contrainte
+pratique}~: l'accès aux ressources de calcul repose sur l'abonnement
+\emph{Azure for Students}, qui n'ouvre l'accès qu'aux déploiements OpenAI disponibles sur
+Azure AI Foundry (à l'exclusion, par exemple, de modèles Anthropic ou Google, non proposés
+dans ce cadre). La comparaison porte donc sur quatre \emph{générations/tailles} différentes
+d'un même fournisseur plutôt que sur plusieurs fournisseurs concurrents, ce qui reste
+cohérent avec la problématique du projet, centrée sur la variabilité de la qualité du code
+généré et non sur un comparatif inter-fournisseurs.
+
+\begin{figure}[H]
+    \centering
+    \begin{figure}[H]
+    \centering
+    \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=single, backgroundcolor=\color{gray!8}]
+8INF950ETE2026/
+|-- docs/ ..................... cahier des charges, grille ISO 25010, etat de l'art
+|-- scripts/ .................. generate_with_llm, extract_code_blocks, compare_metrics
+`-- case-study/
+    |-- docker-compose.sonarqube.yml
+    |-- variant-a-nano/ ......... gpt-5.4-nano 
+    |-- variant-a-codex/ ........ gpt-5.3-codex
+    |-- variant-a-sol/ .......... gpt-5.6-sol
+    |-- variant-a-terra/ ........ gpt-5.6-terra
+    `-- variant-b-hybrid/ ....... config. CI de reference (analyse etendue)
+    \end{lstlisting}
+    \caption{Organisation du dépôt \texttt{8INF950ETE2026}~: les quatre projets générés
+    (\texttt{variant-a-*}) et la configuration de référence de l'analyse étendue
+    (\texttt{variant-b-hybrid}), qui n'est pas une cinquième implémentation comparée.}
+    \label{fig:repo-overview}
+\end{figure}
+\end{figure}
+
+\section{Étude du marché}
+\label{sec:etude-marche}
+
+\subsection{Vibe coding et qualité logicielle}
+
+Le vibe coding accélère la production initiale, mais la littérature signale des risques~:
+hallucinations, absence de tests, incohérences architecturales et vulnérabilités non
+détectées. Plutôt que des critères qualitatifs sur les IDE (Cursor, Copilot), cette étude
+retient des \textbf{métriques SonarQube} mesurables et reproductibles
+(\code{docs/etat-de-lart-outils-ia.md}).
+
+\subsection{Modèles générateurs comparés}
+
+Quatre déploiements Azure AI Foundry ont été testés avec le même prompt
+(\code{docs/prompts/redaction-projet-medical.md}) et la commande~:
+\begin{lstlisting}[language=bash,caption={Génération reproductible hors IDE.}]
+python scripts/generate_with_llm.py --provider azure \
+  --project-name "Gestion de rendez-vous medicaux" \
+  --output case-study/variant-a-terra/GENERATED_DRAFT.md \
+  --code-dir case-study/variant-a-terra
+\end{lstlisting}
+
+Le tableau~\ref{tab:sonar-models} synthétise les résultats SonarQube collectés le
+1er~août~2026 sur \code{http://localhost:9000}.
+
+\begin{table}[H]
+    \centering
+    \caption{Comparaison SonarQube des quatre modèles générateurs (analyse SonarQube)}
+    \label{tab:sonar-models}
+    \small
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Métrique} & \textbf{nano} & \textbf{codex} & \textbf{sol} & \textbf{terra} \\
+        \midrule
+        Bugs & 0 & 0 & 0 & 0 \\
+        Vulnérabilités & 5 & 0 & 0 & 0 \\
+        Code smells & 30 & 48 & 30 & 4 \\
+        Couverture (\%) & 0,0 & 0,0 & 0,0 & 0,0 \\
+        Duplication (\%) & 0,0 & 0,0 & 0,0 & 0,0 \\
+        Complexité cyclomatique & 57 & 82 & 53 & 47 \\
+        Dette technique (min) & 151 & 242 & 151 & 20 \\
+        Security hotspots & 0 & 0 & 0 & 0 \\
+        Note fiabilité & A & A & A & A \\
+        Note sécurité & C & A & A & A \\
+        Note maintenabilité & A & A & A & A \\
+        Lignes de code (NCLOC) & 587 & 585 & 650 & 529 \\
+        Violations (total) & 35 & 48 & 30 & 4 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Synthèse préliminaire}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{\texttt{gpt-5.6-terra}}~: meilleur profil global (4~violations, dette 20~min).
+    \item \textbf{\texttt{gpt-5.3-codex}}~: complexité la plus élevée (82) et dette maximale (242~min).
+    \item \textbf{\texttt{gpt-5.6-sol}}~: base de code la plus volumineuse (650~lignes), profil
+    intermédiaire (30~code smells, dette 151~min --- comme nano) mais sans vulnérabilité
+    détectée (note sécurité~A).
+    \item \textbf{\texttt{gpt-5.4-nano}}~: seul modèle avec 5~vulnérabilités et note sécurité~C.
+    \item Couverture à 0\,\% pour tous (absence de \texttt{coverage.xml} --- attendu en vibe coding pur).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fig2.png}
+    \caption{Tableaux de bord SonarQube des quatre modèles générateurs.}
+    \label{fig:sonar-dashboards}
+\end{figure}
+
+\section{Approches informatiques}
+
+\subsection{Spécification fonctionnelle commune}
+
+Le cahier des charges (\code{docs/cahier-des-charges.md}) définit les entités Patient,
+Médecin et Rendez-vous, avec règles de chevauchement, validation des entrées et endpoint
+\code{/health}. Chaque modèle reçoit la même consigne via le prompt standardisé.
+
+\subsection{Chaîne de génération (vibe coding pur)}
+
+La méthodologie reproductible repose sur trois étapes~:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Prompt}~: \code{docs/prompts/redaction-projet-medical.md} injecté dans
+    \code{generate_with_llm.py} (Azure OpenAI compatible \code{/openai/v1} ou LLM local).
+    \item \textbf{Brouillon}~: le LLM produit un \code{GENERATED_DRAFT.md} balisé avec des
+    marqueurs \code{===FILE: chemin/relatif===} suivis de blocs de code.
+    \item \textbf{Extraction}~: \code{extract_code_blocks.py} matérialise les fichiers
+    sur disque sans révision du contenu généré.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fig3.png}
+    \caption{Pipeline de génération et d'analyse des quatre projets.}
+    \label{fig:gen-pipeline}
+\end{figure}
+
+\subsection{Architecture des projets générés}
+
+Chaque modèle produit une structure légèrement différente (choix typique du vibe coding).
+L'exemple \texttt{variant-a-terra} expose une API FastAPI modulaire~:
+
+\begin{lstlisting}[language=Python,caption={Point d'entrée \code{variant-a-terra/app/main.py}.}]
+app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
+app.include_router(patients.router)
+app.include_router(practitioners.router)
+app.include_router(appointments.router)
+
+@app.get("/health", tags=["Supervision"])
+def health_check():
+    return {"status": "ok", "service": settings.app_name, "version": settings.app_version}
+\end{lstlisting}
+
+Les routes couvrent typiquement CRUD patients, praticiens/médecins et rendez-vous, avec
+validation Pydantic et persistance SQLite via SQLAlchemy. La documentation Swagger est
+disponible sur \code{/docs}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fig4.png}
+    \caption{Swagger de l'application générée par le modèle gpt-5.6-sol sur le port 8001.}
+    \label{fig:gen-pipeline}
+\end{figure}
+
+\subsection{Analyse étendue (quality gate CI)}
+\label{sec:analyse-etendue}
+
+En complément de l'analyse SonarQube (scan statique ponctuel, section~\ref{sec:etude-marche}),
+une \textbf{analyse étendue} a été appliquée aux \emph{mêmes quatre projets générés}, en
+reproduisant le quality gate attendu avant toute mise en production~: lint, couverture de
+tests minimale et audit des dépendances. La configuration de référence de ce pipeline est
+formalisée dans \code{case-study/variant-b-hybrid/README.md}~:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Ruff} --- \texttt{ruff check app tests} (style, erreurs courantes).
+    \item \textbf{Pytest} --- couverture minimale de 80\,\% (\texttt{--cov-fail-under=80}).
+    \item \textbf{pip-audit} --- audit des vulnérabilités connues des dépendances.
+\end{enumerate}
+
+Ce pipeline est outillé via \textbf{GitHub Actions}
+(\code{.github/workflows/variant-b-hybrid-ci.yml}), déclenché à chaque \texttt{push} ou
+\emph{pull request}. Le dossier \code{case-study/variant-b-hybrid} ne contient que la
+configuration CI de référence (workflow, dépendances de développement) ainsi qu'un point de
+terminaison \code{/health} minimal ayant servi à valider l'outillage avant son application
+aux quatre projets~: il ne constitue \textbf{pas} une cinquième implémentation comparée dans
+cette étude --- les projets analysés restent ceux de la section précédente.
+
+\subsubsection{Résultats}
+
+Le pipeline a été rejoué localement sur les quatre projets générés via
+\texttt{make ci-variants-a} (\code{scripts/run_ci_local.py})~: le
+tableau~\ref{tab:analyse-etendue} montre qu'\textbf{aucun} des quatre projets ne satisfait ce
+quality gate, principalement en raison d'une couverture de tests insuffisante et de
+dépendances vulnérables --- deux angles morts que l'analyse SonarQube seule ne fait pas
+apparaître avec la même sévérité (cf. tableau~\ref{tab:sonar-models}, notes de fiabilité et
+de maintenabilité majoritairement~A). Ce constat appuie l'hypothèse~H1.
+
+\begin{table}[H]
+    \centering
+    \caption{Résultats de l'analyse étendue (pipeline CI local, 5~août~2026) sur les quatre
+    projets générés. Modèles : nano = \texttt{gpt-5.4-nano}, codex = \texttt{gpt-5.3-codex},
+    sol = \texttt{gpt-5.6-sol}, terra = \texttt{gpt-5.6-terra}.}
+    \label{tab:analyse-etendue}
+    \footnotesize
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Métrique} & \textbf{nano} & \textbf{codex} & \textbf{sol} & \textbf{terra} \\
+        \midrule
+        Ruff (lint) & échec & échec & échec & échec \\
+        Couverture Pytest & 10\,\% & 33\,\% & 60\,\% & 66\,\% \\
+        Seuil $\geq$ 80\,\% & non & non & non & non \\
+        pip-audit & 8 vuln. & 8 vuln. & 8 vuln. & 8 vuln. \\
+        Quality gate & FAIL & FAIL & FAIL & FAIL \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Outils de mesure}
+
+Les deux analyses (SonarQube et étendue) sont appliquées aux mêmes quatre projets, avec les
+mêmes outils et la même configuration pour chaque modèle, afin de garantir l'égalité de
+jugement. SonarQube Community est déployé via Docker
+(\code{case-study/docker-compose.sonarqube.yml}).
+
+\subsection{Difficultés techniques rencontrées}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Extraction de code}~: le regex initial de \code{extract_code_blocks.py}
+    ratait les blocs vides (\code{__init__.py}) et \texttt{database.py}~; correction
+    via une fence fermante en début de ligne (\texttt{\^{}```}).
+    \item \textbf{SonarQube}~: configuration \texttt{sonar.tests} et exclusions selon
+    l'emplacement des tests (\code{tests/} vs \code{app/tests/}).
+    \item \textbf{Qualité du code généré}~: emails invalides dans les tests
+    (\texttt{@example.test}), architectures hétérogènes entre modèles --- illustrant les
+    risques documentés dans \code{docs/risques-vibe-coding.md}.
+\end{itemize}
+
+\section{Analyse}
+
+\subsection{Hypothèses de recherche}
+
+\begin{description}[leftmargin=3.5cm, style=nextline]
+    \item[H1] Une analyse SonarQube seule sous-estime les lacunes qualité (couverture de
+    tests, dépendances vulnérables) que révèle une analyse étendue (lint~+~tests~+~audit).
+    \item[H2] Certains modèles génèrent davantage de vulnérabilités (ex. nano vs terra).
+    \item[H3] La couverture de tests est quasi nulle sans contrainte explicite imposée par
+    un quality gate.
+    \item[H4] Le temps de génération initial est court, mais le coût de mise en conformité
+    avec l'analyse étendue varie selon le modèle.
+\end{description}
+
+\subsection{Interprétation des résultats SonarQube}
+    
+
+\subsection{Limites}
+
+\begin{itemize}[leftmargin=*]
+    \item Une seule étude de cas et un seul prompt par modèle.
+    \item Couverture SonarQube non alimentée (pas de \texttt{coverage.xml}).
+    \item L'analyse étendue (lint, tests, audit) n'est pas intégrée aux tableaux de bord
+    SonarQube~; les deux analyses restent consultées séparément, sans vue unifiée.
+\end{itemize}
+
+\section{Résultats}
+
+\subsection{Résultats de l'analyse SonarQube}
+
+Les quatre projets ont été analysés avec succès sur SonarQube Community. Le tableau~\ref{tab:sonar-models} constitue le livrable
+principal de comparaison inter-modèles.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fig6.png}
+    \caption{Diagramme en barres~: violations, code smells et dette technique par modèle
+    (généré par \code{scripts/generate_fig6_chart.py}).}
+    \label{fig:comparison-chart}
+\end{figure}
+
+\subsection{Résultats de l'analyse étendue}
+
+Le tableau~\ref{tab:analyse-etendue} (section~\ref{sec:analyse-etendue}) confirme qu'aucun
+des quatre projets ne satisfait le quality gate étendu, essentiellement à cause de la
+couverture de tests et des dépendances vulnérables --- deux angles morts que l'analyse
+SonarQube seule ne révèle pas avec la même sévérité.
+
+\section{Conclusion}
+
+\subsection{Bilan}
+
+L'étude a mis en place une chaîne reproductible de vibe coding (prompt $\rightarrow$ brouillon
+$\rightarrow$ extraction) et comparé quatre modèles Azure sur une spécification commune, au
+moyen de deux analyses complémentaires~: une \textbf{analyse SonarQube} (statique) et une
+\textbf{analyse étendue} (lint, couverture de tests, audit de dépendances). Les écarts de
+qualité sont significatifs~: \texttt{gpt-5.6-terra} ressort comme le meilleur candidat en
+vibe coding pur, \texttt{gpt-5.4-nano} comme le plus risqué côté sécurité --- mais aucun des
+quatre modèles ne satisfait le quality gate de l'analyse étendue.
+
+\subsection{Réponse à la problématique}
+
+Le vibe coding pur produit des applications fonctionnelles rapidement, mais la qualité
+dépend fortement du modèle choisi. Les métriques SonarQube objectivent ces différences sans
+revue humaine, mais elles ne suffisent pas~: l'analyse étendue révèle, sur les \emph{mêmes}
+projets, des lacunes qu'un scan statique seul ne détecte pas (couverture de tests quasi
+nulle, dépendances vulnérables), faisant échouer les quatre modèles au quality gate combiné.
+Une analyse purement SonarQube ne garantit donc pas, à elle seule, la qualité logicielle
+attendue en contexte de santé.
+
+\section*{Références}
+\addcontentsline{toc}{section}{Références}
+
+\begin{enumerate}[label={[\arabic*]}, leftmargin=*]
+    \item ISO/IEC 25010:2023 --- Systems and software engineering --- SQuaRE --- Product quality model.
+    \item SonarSource, \emph{SonarQube Documentation}, \url{https://docs.sonarsource.com/sonarqube/}.
+    \item FastAPI, \emph{Documentation officielle}, \url{https://fastapi.tiangolo.com/}.
+    \item Mcheick, H., \emph{Plan de cours 8INF950 --- Été 2026}, UQAC (\texttt{plan8INF950ETE2026.pdf}).
+    \item TOÏGO, N., \emph{État de l'art --- Comparaison SonarQube des modèles IA},
+    \code{docs/etat-de-lart-outils-ia.md}.
+    \item Commission d'accès à l'information du Québec, \emph{Loi~25}.
+\end{enumerate}
+
+\end{document}

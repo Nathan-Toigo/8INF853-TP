@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 FILE_BLOCK_RE = re.compile(
-    r"^===FILE:\s*(?P<path>.+?)\s*===\s*\n```[^\n]*\n(?P<code>.*?)\n```",
+    r"^===FILE:\s*(?P<path>.+?)\s*===\s*\n```[^\n]*\n(?P<code>.*?)^```",
     re.MULTILINE | re.DOTALL,
 )
 
@@ -49,3 +49,29 @@ def write_files(files: list[tuple[str, str]], base_dir: Path) -> list[Path]:
         target.write_text(content, encoding="utf-8")
         written.append(target)
     return written
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Extrait les fichiers de code depuis un GENERATED_DRAFT.md (marqueurs ===FILE: ...===)."
+    )
+    parser.add_argument("draft", type=Path, help="Chemin du fichier Markdown généré par le LLM")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        help="Dossier racine où écrire les fichiers extraits",
+    )
+    args = parser.parse_args()
+
+    markdown_text = args.draft.read_text(encoding="utf-8")
+    files = extract_files(markdown_text)
+    if not files:
+        print("Aucun bloc ===FILE: ...=== détecté.")
+        raise SystemExit(1)
+
+    written = write_files(files, args.output_dir)
+    print(f"{len(written)} fichier(s) écrit(s) sous {args.output_dir} :")
+    for path in written:
+        print(f"  - {path}")

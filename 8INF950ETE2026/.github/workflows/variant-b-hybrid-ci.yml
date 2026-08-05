@@ -1,0 +1,50 @@
+name: CI - Variante B (hybride)
+
+on:
+  push:
+    paths:
+      - "8INF950ETE2026/case-study/variant-b-hybrid/**"
+      - "8INF950ETE2026/.github/workflows/variant-b-hybrid-ci.yml"
+  pull_request:
+    paths:
+      - "8INF950ETE2026/case-study/variant-b-hybrid/**"
+      - "8INF950ETE2026/.github/workflows/variant-b-hybrid-ci.yml"
+
+defaults:
+  run:
+    working-directory: 8INF950ETE2026/case-study/variant-b-hybrid
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            8INF950ETE2026/case-study/variant-b-hybrid/requirements.txt
+            8INF950ETE2026/case-study/variant-b-hybrid/requirements-dev.txt
+
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (Ruff)
+        run: ruff check app tests
+
+      - name: Tests + couverture (minimum 80 %)
+        run: pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=80
+
+      - name: Audit des dépendances (pip-audit)
+        run: pip-audit -r requirements.txt
+
+      - name: Conserver le rapport de couverture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: variant-b-coverage-report
+          path: 8INF950ETE2026/case-study/variant-b-hybrid/coverage.xml
